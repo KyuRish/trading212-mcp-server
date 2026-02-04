@@ -1,0 +1,26 @@
+{
+    "email": {
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 587,
+        "sender_email": "your-email@gmail.com",
+        "sender_password": "your-app-password",
+        "recipient_email": "your-email@gmail.com"
+    },
+    "trading212": {
+        "api_key": "your-api-key",
+        "api_secret": "your-api-secret",
+        "environment": "live"
+    },
+    "goals": {
+        "target_gold_grams": 100,
+        "current_gold_grams": 15,
+        "target_date": "2027-06-30",
+        "monthly_investment": 400
+    },
+    "alert_thresholds": {
+        "gold_price_drop_percent": 5,
+        "gold_price_spike_percent": 10,
+        "portfolio_change_percent": 3,
+        "days_between_summary": 7
+    }
+}

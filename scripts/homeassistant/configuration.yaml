@@ -1,0 +1,37 @@
+# Trading 212 Gold Tracker - Home Assistant Integration
+# Add this to your Home Assistant configuration.yaml
+# Replace YOUR_PC_IP with your PC's IP address (e.g., 192.168.178.XX)
+
+# REST commands to control the analyzer service
+rest_command:
+  trading_analyzer_run:
+    url: "http://YOUR_PC_IP:8212/run"
+    method: POST
+    content_type: "application/json"
+
+  trading_analyzer_stop:
+    url: "http://YOUR_PC_IP:8212/stop"
+    method: POST
+    content_type: "application/json"
+
+# Sensor to check analyzer status
+sensor:
+  - platform: rest
+    name: "Gold Tracker Status"
+    resource: "http://YOUR_PC_IP:8212/status"
+    method: GET
+    scan_interval: 300  # Check every 5 minutes
+    value_template: "{{ 'Online' if value_json.running else 'Offline' }}"
+    json_attributes:
+      - last_analysis
+      - time
+
+# Binary sensor for health check
+binary_sensor:
+  - platform: rest
+    name: "Gold Tracker Online"
+    resource: "http://YOUR_PC_IP:8212/health"
+    method: GET
+    scan_interval: 60
+    value_template: "{{ value_json.status == 'ok' }}"
+    device_class: connectivity

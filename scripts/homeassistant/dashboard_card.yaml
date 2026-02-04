@@ -1,0 +1,23 @@
+# Trading 212 Gold Tracker - Dashboard Card
+# Add this to your Lovelace dashboard
+
+type: entities
+title: Gold Tracker
+icon: mdi:gold
+entities:
+  - entity: binary_sensor.gold_tracker_online
+    name: Service Status
+  - entity: sensor.gold_tracker_status
+    name: Last Analysis
+  - type: button
+    name: Run Analysis Now
+    icon: mdi:play
+    tap_action:
+      action: call-service
+      service: script.run_gold_analysis
+  - type: button
+    name: Stop Service
+    icon: mdi:stop
+    tap_action:
+      action: call-service
+      service: script.stop_gold_tracker

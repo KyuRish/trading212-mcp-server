@@ -1,0 +1,24 @@
+# Trading 212 Gold Tracker - HA Scripts
+# Add these to your scripts.yaml or create in HA UI
+
+run_gold_analysis:
+  alias: "Run Gold Analysis Now"
+  description: "Trigger immediate gold portfolio analysis"
+  icon: mdi:gold
+  sequence:
+    - action: rest_command.trading_analyzer_run
+    - action: notify.mobile_app_my_oneplus
+      data:
+        title: "Gold Tracker"
+        message: "Analysis triggered manually"
+
+stop_gold_tracker:
+  alias: "Stop Gold Tracker"
+  description: "Stop the gold tracker service"
+  icon: mdi:stop
+  sequence:
+    - action: rest_command.trading_analyzer_stop
+    - action: notify.mobile_app_my_oneplus
+      data:
+        title: "Gold Tracker"
+        message: "Service stopped"
