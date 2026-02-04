@@ -20,6 +20,7 @@ A Model Context Protocol (MCP) server for seamless integration with Trading 212'
 - **Gold Price Monitoring** -- Tracks daily price changes with trend indicators
 - **Technical Analysis** -- SMA(50/200), RSI(14), golden cross detection
 - **Macro Data** -- DXY, 10Y yield, VIX, Fear & Greed index
+- **Event-Aware Scheduling** -- AI recommends next analysis time based on economic events (CPI, Fed, NFP)
 - **Progress Visualization** -- Vault-style progress bar toward your gold target
 - **Home Assistant Integration** -- Push notifications + persistent reports via HA Companion app
 
@@ -116,6 +117,7 @@ The standalone analyzer monitors your gold investments on Trading 212 and sends 
 | **Buying Opportunity** | Gold price drops >5% in 7 days |
 | **Take Profit** | Gold price rises >10% in 7 days |
 | **Weekly Summary** | Portfolio + progress report every 7 days |
+| **Event-Triggered** | AI-scheduled check around high-impact events (CPI, Fed, NFP) |
 
 ### Notification System
 
@@ -129,6 +131,7 @@ Cash: €11.26
 Gold Price: €128.05/g ↑2.0%
 
 📊 → HOLD
+⏰ Next: Feb 12 15:00 (CPI release)
 Tap for full AI report ↗
 ```
 
@@ -196,7 +199,7 @@ The analyzer is configured via environment variables:
 # One-shot analysis
 python scripts/standalone_analyzer.py
 
-# Run as daemon (daily at 8 AM)
+# Run as daemon (daily baseline + event-aware checks every 4h)
 python scripts/standalone_analyzer.py --daemon --time 08:00
 ```
 
@@ -247,7 +250,19 @@ shell_command:
   run_gold_tracker: "/config/trading212-analyzer/run.sh"
 ```
 
-Create an automation to run daily at your preferred time.
+Create an automation to run every 4 hours (the script is smart enough to only send notifications when warranted):
+
+```yaml
+automation:
+  - alias: "Gold Tracker"
+    trigger:
+      - platform: time_pattern
+        hours: "/4"
+    action:
+      - service: shell_command.run_gold_tracker
+```
+
+The AI analyst recommends when to check next based on upcoming economic events. On quiet weeks it defaults to 7 days; before major events (CPI, Fed, NFP) it schedules a check ~30 minutes after the release.
 
 ### CLI Flags
 
@@ -256,7 +271,7 @@ python3 analyzer.py              # Full run (fetch data, AI analysis, send notif
 python3 analyzer.py --dry-run    # Full run but print instead of sending
 python3 analyzer.py --test-data  # Test market data collection only
 python3 analyzer.py --test-ai    # Test data + build AI prompt (no API call)
-python3 analyzer.py --daemon     # Run as daemon (daily at 08:00)
+python3 analyzer.py --daemon     # Run as daemon (daily + event-aware 4h checks)
 ```
 
 ### REST API Service (Optional)

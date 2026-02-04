@@ -186,7 +186,7 @@ class HomeAssistantNotifier:
 
     def write_html_report(self, portfolio: dict, ai_text: str = "",
                           grams: float = 0, target: float = 100, pct: float = 0,
-                          projection: str = "") -> bool:
+                          projection: str = "", next_check: dict = None) -> bool:
         """Write the full report as an HTML file served by HA at /local/gold_tracker.html."""
         html_path = Path("/config/www/gold_tracker.html")
         html_path.parent.mkdir(parents=True, exist_ok=True)
@@ -208,6 +208,19 @@ class HomeAssistantNotifier:
         <h2>&#128202; AI Market Analysis</h2>
         <pre>{ai_escaped}</pre>
     </div>"""
+
+        # Build next-check HTML
+        next_check_html = ""
+        if next_check:
+            try:
+                nc_dt = datetime.fromisoformat(next_check["datetime"])
+                nc_str = nc_dt.strftime("%b %d, %H:%M")
+                nc_reason = next_check.get("reason", "")
+                next_check_html = f"&#9200; Next analysis: {nc_str}"
+                if nc_reason:
+                    next_check_html += f" ({nc_reason})"
+            except Exception:
+                pass
 
         # Clamp percentage for bar width
         bar_pct = min(pct, 100)
@@ -377,6 +390,7 @@ class HomeAssistantNotifier:
   .bar-ends {{ display: flex; justify-content: space-between; font-size: 0.8em; color: #888; }}
   .bar-ends .current {{ color: #ffd700; font-weight: 600; }}
   .projection {{ text-align: center; color: #888; font-size: 0.85em; margin-top: 10px; }}
+  .next-check {{ text-align: center; color: #666; font-size: 0.78em; margin-top: 6px; }}
 
   .t212-btn {{ display: block; text-align: center; background: linear-gradient(135deg, #ffd700, #f0c000);
               color: #1a1a2e; padding: 14px; border-radius: 12px; font-weight: 700; text-decoration: none;
@@ -453,6 +467,7 @@ class HomeAssistantNotifier:
             <span>&#x1F451; {target:.0f}g</span>
         </div>
         <div class="projection">{projection}</div>
+        <div class="next-check">{next_check_html}</div>
     </div>
 
     <a class="t212-btn" id="t212-link" href="https://app.trading212.com/">Open Trading 212 &#8594;</a>
@@ -713,6 +728,10 @@ class AIAnalyst:
 
         sections = []
 
+        # Current time so AI can schedule future events
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M CET")
+        sections.append(f"**Current time: {now_str}**\n")
+
         # Portfolio context (always available)
         sections.append(
             f"## Current Portfolio\n"
@@ -795,6 +814,14 @@ class AIAnalyst:
             f"   → BUY {sym}<amount> at {sym}<price>/g\n"
             f"   → SELL {sym}<amount> at {sym}<price>/g\n"
             "   Use the investor's monthly SIP amount as reference for BUY amounts.\n"
+            "6. Next check-in: When should we run the next analysis?\n"
+            "   MUST be in the future (after the current time shown above).\n"
+            "   Format exactly: NEXT_CHECK: YYYY-MM-DD HH:MM (reason)\n"
+            "   Pick the next high-impact event from the calendar, schedule ~30min after it.\n"
+            "   If no future events within 7 days, default to 7 days from now at 08:00.\n"
+            "   Examples:\n"
+            "     NEXT_CHECK: 2026-02-12 15:00 (CPI release at 14:30 CET)\n"
+            "     NEXT_CHECK: 2026-02-19 08:00 (routine — no major events)\n"
             "Format for easy reading on a phone screen."
         )
 
@@ -1012,6 +1039,19 @@ def run_analysis(dry_run: bool = False):
 
     should_summarize = weekly_due or invested_changed or orders_changed or daily_price_move
 
+    # --- Event-triggered check (AI recommended next analysis time) ---
+    event_triggered = False
+    pending_next_check = state.get("next_check")
+    if pending_next_check:
+        try:
+            check_dt = datetime.fromisoformat(pending_next_check["datetime"])
+            if datetime.now() >= check_dt:
+                event_triggered = True
+                should_summarize = True
+                print(f"  Event trigger: {pending_next_check.get('reason', 'scheduled check')}")
+        except Exception:
+            pass
+
     # --- AI Analyst (only when notification will fire) ---
     ai_full_text = ""     # Full analysis for HA persistent notification
     ai_verdict = ""       # One-line verdict for push notification
@@ -1029,6 +1069,9 @@ def run_analysis(dry_run: bool = False):
                 skip_ai = hours_since < 20
             except Exception:
                 pass
+
+        if event_triggered:
+            skip_ai = False  # Override cooldown for event-based analysis
 
         if skip_ai and cached_full:
             ai_full_text = cached_full
@@ -1070,9 +1113,29 @@ def run_analysis(dry_run: bool = False):
                 if not ai_verdict:
                     first_line = ai_full_text.strip().split("\n")[0]
                     ai_verdict = first_line[:80]
+                # Extract NEXT_CHECK scheduling line
+                next_check_parsed = None
+                for line in ai_full_text.split("\n"):
+                    stripped = line.strip()
+                    if stripped.startswith("NEXT_CHECK:"):
+                        parts = stripped[len("NEXT_CHECK:"):].strip()
+                        try:
+                            next_dt = datetime.strptime(parts[:16], "%Y-%m-%d %H:%M")
+                            reason = parts[16:].strip().strip("()")
+                            next_check_parsed = {"datetime": next_dt.isoformat(), "reason": reason}
+                            print(f"  Next check: {parts[:16]} ({reason})")
+                        except (ValueError, IndexError):
+                            pass
+                        break
+
                 state["last_ai_analysis"] = ai_full_text
                 state["last_ai_verdict"] = ai_verdict
                 state["last_ai_date"] = datetime.now().isoformat()
+                # Update next_check: use AI's new recommendation, or clear consumed event
+                if next_check_parsed:
+                    state["next_check"] = next_check_parsed
+                elif event_triggered:
+                    state["next_check"] = None  # Consumed, AI didn't set a new one
                 if market_data.get("errors"):
                     print(f"  Data gaps: {', '.join(market_data['errors'])}")
             else:
@@ -1080,7 +1143,10 @@ def run_analysis(dry_run: bool = False):
 
     if should_summarize:
         # Determine notification title
-        if invested_changed and last_invested == 0:
+        if event_triggered:
+            reason = pending_next_check.get("reason", "Event") if pending_next_check else "Event"
+            title_event = reason[:40]
+        elif invested_changed and last_invested == 0:
             title_event = "Order Filled"
         elif invested_changed:
             title_event = "Portfolio Changed"
@@ -1130,6 +1196,16 @@ def run_analysis(dry_run: bool = False):
         lines.append("")
         lines.append(vault)
         lines.append(f"{total_grams:.1f}g \u2192 {target_grams}g ({pct:.1f}%)")
+
+        # Show next scheduled check-in
+        nc = state.get("next_check")
+        if nc:
+            try:
+                nc_dt = datetime.fromisoformat(nc["datetime"])
+                nc_str = nc_dt.strftime("%b %d %H:%M")
+                lines.append(f"\u23F0 Next: {nc_str} ({nc.get('reason', '')})")
+            except Exception:
+                pass
 
         if ai_full_text:
             lines.append("Tap for full AI report \u2197")
@@ -1188,6 +1264,7 @@ def run_analysis(dry_run: bool = False):
                 target=target_grams,
                 pct=pct,
                 projection=projection_text,
+                next_check=state.get("next_check"),
             )
 
             # Send short push notification to phone
@@ -1218,18 +1295,45 @@ def run_analysis(dry_run: bool = False):
 
 
 def run_daemon(run_time: str = "08:00"):
-    """Run as daemon, executing daily at specified time."""
-    print(f"Daemon started - daily run at {run_time}")
+    """Run as daemon with event-aware scheduling.
+
+    Daily baseline run at the specified time, plus event-triggered checks
+    every 4 hours when the AI has recommended a next analysis time.
+    """
+    print(f"Daemon started — daily baseline at {run_time}, event-aware checks every 4h")
 
     last_run_date = None
+    last_check_hour = None
     while True:
         now = datetime.now()
-        if now.strftime("%H:%M") >= run_time and now.date() != last_run_date:
+        current_hour = now.hour
+
+        # Daily baseline run at scheduled time
+        daily_due = (now.strftime("%H:%M") >= run_time and now.date() != last_run_date)
+
+        # Event check: every 4 hours, check if a pending next_check has matured
+        event_check_due = False
+        if current_hour % 4 == 0 and current_hour != last_check_hour:
+            state = load_state()
+            next_check = state.get("next_check")
+            if next_check:
+                try:
+                    check_dt = datetime.fromisoformat(next_check["datetime"])
+                    event_check_due = now >= check_dt
+                    if event_check_due:
+                        print(f"  Event check: {next_check.get('reason', 'scheduled')}")
+                except Exception:
+                    pass
+
+        if daily_due or event_check_due:
             try:
                 run_analysis()
-                last_run_date = now.date()
+                if daily_due:
+                    last_run_date = now.date()
+                last_check_hour = current_hour
             except Exception as e:
                 print(f"Error: {e}")
+
         time.sleep(60)
 
 
