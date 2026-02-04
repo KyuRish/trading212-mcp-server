@@ -1,0 +1,12 @@
+language: en
+intents:
+  PortfolioStatus:
+    data:
+      - sentences:
+          - "how is my portfolio [doing]"
+          - "portfolio [tracker] status"
+          - "how are my investments [doing]"
+          - "how is my gold [doing]"
+          - "what's [the] gold price"
+          - "how much gold do I have"
+          - "investment update"

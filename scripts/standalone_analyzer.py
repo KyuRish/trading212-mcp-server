@@ -184,6 +184,43 @@ class HomeAssistantNotifier:
             print(f"Notification error: {e}")
             return False
 
+    def update_sensors(self, data: dict) -> bool:
+        """Push portfolio data as HA sensor for voice assistant queries."""
+        url = f"{self.url}/api/states/sensor.portfolio_tracker"
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "state": data.get("verdict", "unknown"),
+            "attributes": {
+                "friendly_name": "Portfolio Tracker",
+                "icon": "mdi:chart-line",
+                "total_value": data.get("total_value", 0),
+                "invested": data.get("invested", 0),
+                "cash": data.get("cash", 0),
+                "profit_loss": data.get("profit_loss", 0),
+                "gold_price": data.get("gold_price", 0),
+                "gold_grams": data.get("gold_grams", 0),
+                "price_change_7d": data.get("price_change_7d", 0),
+                "target_grams": data.get("target_grams", 100),
+                "progress_pct": data.get("progress_pct", 0),
+                "currency": data.get("currency", "EUR"),
+                "verdict_text": data.get("verdict_text", ""),
+                "next_check": data.get("next_check", ""),
+                "last_updated": datetime.now().isoformat(),
+            }
+        }
+        body = json.dumps(payload).encode()
+        try:
+            req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] Updated sensor.portfolio_tracker")
+                return True
+        except Exception as e:
+            print(f"Sensor update error: {e}")
+            return False
+
     def write_html_report(self, portfolio: dict, ai_text: str = "",
                           grams: float = 0, target: float = 100, pct: float = 0,
                           projection: str = "", next_check: dict = None) -> bool:
@@ -723,6 +760,7 @@ class AIAnalyst:
             "accumulating physical gold via an ETF (iShares Physical Gold ETC). "
             "Give concise, actionable analysis. No markdown formatting — "
             "use plain text with line breaks, bullets (•), and arrows (→). "
+            f"ALWAYS use {sym} as the currency symbol (never $ unless quoting USD data). "
             "Keep response under 250 words."
         )
 
@@ -1282,6 +1320,32 @@ def run_analysis(dry_run: bool = False):
             if notifier.send(title, push_msg, extra=push_extra):
                 alerts_sent += 1
                 state["last_summary"] = datetime.now().isoformat()
+
+            # Update HA sensor for voice assistant
+            nc_info = state.get("next_check")
+            nc_label = ""
+            if nc_info:
+                try:
+                    nc_label = datetime.fromisoformat(nc_info["datetime"]).strftime("%b %d %H:%M")
+                    nc_label += f" ({nc_info.get('reason', '')})"
+                except Exception:
+                    pass
+            notifier.update_sensors({
+                "verdict": (ai_verdict.lstrip("\u2192 ").split("\u2014")[0].strip()
+                            if ai_verdict else "unknown"),
+                "total_value": round(total_value, 2),
+                "invested": round(actual_invested, 2),
+                "cash": round(free_cash, 2),
+                "profit_loss": round(ppl, 2) if ppl else 0,
+                "gold_price": round(gold_price, 2),
+                "gold_grams": round(total_grams, 1),
+                "price_change_7d": round(change_7d, 1),
+                "target_grams": target_grams,
+                "progress_pct": round(pct, 1),
+                "currency": sym,
+                "verdict_text": ai_verdict or "",
+                "next_check": nc_label,
+            })
 
     # Save state
     state["last_price"] = gold_price

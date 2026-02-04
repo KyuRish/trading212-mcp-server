@@ -21,6 +21,7 @@ A Model Context Protocol (MCP) server for seamless integration with Trading 212'
 - **Technical Analysis** -- SMA(50/200), RSI(14), golden cross detection
 - **Macro Data** -- DXY, 10Y yield, VIX, Fear & Greed index
 - **Event-Aware Scheduling** -- AI recommends next analysis time based on economic events (CPI, Fed, NFP)
+- **Voice Assistant** -- Ask HA voice assistant about your portfolio ("How is my gold doing?")
 - **Progress Visualization** -- Vault-style progress bar toward your gold target
 - **Home Assistant Integration** -- Push notifications + persistent reports via HA Companion app
 
@@ -313,7 +314,9 @@ trading212-mcp-server/
 │   └── homeassistant/         # HA integration configs
 │       ├── configuration.yaml
 │       ├── scripts.yaml
-│       └── dashboard_card.yaml
+│       ├── dashboard_card.yaml
+│       ├── custom_sentences_en.yaml  # Voice assistant trigger phrases
+│       └── intent_scripts.yaml       # Voice assistant speech responses
 ├── assets/
 │   └── kyubi_fox.gif          # Neon fox animation for HTML report
 └── README.md

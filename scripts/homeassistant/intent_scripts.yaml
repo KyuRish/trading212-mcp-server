@@ -1,0 +1,17 @@
+# Add this block to your HA configuration.yaml
+# Then restart HA or reload intents
+
+intent_script:
+  PortfolioStatus:
+    speech:
+      text: >
+        {% set p = states.sensor.portfolio_tracker.attributes %}
+        Your portfolio is worth {{ p.total_value }} {{ p.currency }}.
+        You've invested {{ p.invested }} {{ p.currency }} in {{ p.gold_grams }} grams of gold,
+        which is {{ p.progress_pct }} percent of your {{ p.target_grams }} gram target.
+        Gold is at {{ p.gold_price }} {{ p.currency }} per gram,
+        {% if p.price_change_7d > 0 %}up{% elif p.price_change_7d < 0 %}down{% else %}flat{% endif %}
+        {{ p.price_change_7d | abs }} percent this week.
+        Your return is {% if p.profit_loss >= 0 %}plus{% else %}minus{% endif %}
+        {{ p.profit_loss | abs }} {{ p.currency }}.
+        {% if p.verdict_text %}The AI recommendation is: {{ p.verdict_text }}.{% endif %}
