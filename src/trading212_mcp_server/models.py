@@ -55,6 +55,7 @@ class Executor(str, Enum):
 
 
 class FillType(str, Enum):
+    TRADE = "TRADE"
     TOTV = "TOTV"
     OTC = "OTC"
 

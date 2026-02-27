@@ -1,8 +1,12 @@
 import httpx
+import logging
 import os
+import time
 import base64
 from enum import Enum
 from typing import Optional, Any
+
+log = logging.getLogger("trading212")
 
 from trading212_mcp_server.models import (
     Account, Cash, Position, Order, Exchange, Instrument,
@@ -11,6 +15,8 @@ from trading212_mcp_server.models import (
     PieRequest, DuplicatePieRequest, ReportDataIncluded,
     MarketOrderRequest, LimitOrderRequest, StopOrderRequest, StopLimitOrderRequest,
 )
+
+_MAX_RETRIES = 3
 
 
 class _Environment(str, Enum):
@@ -21,9 +27,9 @@ class _Environment(str, Enum):
 class T212Client:
     def __init__(self, api_key: str = None, api_secret: str = None,
                  environment: str = None, version: str = "v0"):
-        api_key = api_key or os.getenv("TRADING212_API_KEY")
-        api_secret = api_secret or os.getenv("TRADING212_API_SECRET")
-        environment = environment or os.getenv("ENVIRONMENT", "demo")
+        api_key = api_key or os.getenv("TRADING212_API_KEY") or os.getenv("T212_API_KEY")
+        api_secret = api_secret or os.getenv("TRADING212_API_SECRET") or os.getenv("T212_API_SECRET")
+        environment = environment or os.getenv("ENVIRONMENT") or os.getenv("T212_ENV", "demo")
         base_url = f"https://{environment}.trading212.com/api/{version}"
 
         if api_secret:
@@ -35,34 +41,76 @@ class T212Client:
 
         headers = {"Authorization": auth_header, "Content-Type": "application/json"}
         self.client = httpx.Client(base_url=base_url, headers=headers, timeout=30)
+        self._rate_limits: dict[str, dict] = {}
+        self._total_wait: float = 0
+
+    def drain_wait_time(self) -> float:
+        elapsed, self._total_wait = self._total_wait, 0
+        return round(elapsed, 1)
+
+    def _wait_for_rate_limit(self, url: str) -> None:
+        endpoint = url.split("?")[0]
+        info = self._rate_limits.get(endpoint)
+        if not info:
+            return
+        if info["remaining"] <= 0:
+            wait = info["reset"] - time.time()
+            if wait > 0:
+                sleep_for = min(wait + 0.5, 60)
+                log.info("Rate limit reached for %s, waiting %.1fs", endpoint, sleep_for)
+                self._total_wait += sleep_for
+                time.sleep(sleep_for)
+
+    def _update_rate_limit(self, url: str, headers: httpx.Headers) -> None:
+        endpoint = url.split("?")[0]
+        try:
+            self._rate_limits[endpoint] = {
+                "remaining": int(headers.get("x-ratelimit-remaining", 1)),
+                "reset": int(headers.get("x-ratelimit-reset", 0)),
+            }
+        except (ValueError, TypeError):
+            pass
 
     def _request(self, method: str, url: str, **kwargs) -> Any:
-        try:
-            response = self.client.request(method, url, **kwargs)
-            response.raise_for_status()
-            if response.status_code == 204:
-                return None
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            status = e.response.status_code
-            if status == 401:
+        for attempt in range(_MAX_RETRIES):
+            self._wait_for_rate_limit(url)
+            try:
+                response = self.client.request(method, url, **kwargs)
+                self._update_rate_limit(url, response.headers)
+                response.raise_for_status()
+                if response.status_code == 204:
+                    return None
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                status = e.response.status_code
+                self._update_rate_limit(url, e.response.headers)
+                if status == 401:
+                    raise Exception(
+                        "Authentication failed. Check TRADING212_API_KEY and "
+                        "TRADING212_API_SECRET in your environment."
+                    )
+                if status == 429:
+                    if attempt < _MAX_RETRIES - 1:
+                        reset = int(e.response.headers.get("x-ratelimit-reset", 0))
+                        wait = max(reset - time.time(), 1)
+                        sleep_for = min(wait + 0.5, 60)
+                        log.info("429 on %s, retrying in %.1fs (attempt %d/%d)",
+                                 url, sleep_for, attempt + 1, _MAX_RETRIES)
+                        self._total_wait += sleep_for
+                        time.sleep(sleep_for)
+                        continue
+                    raise Exception(
+                        "Rate limited by Trading 212 after multiple retries."
+                    )
+                raise Exception(f"Trading 212 API error {status}: {e.response.text}")
+            except httpx.ConnectError:
                 raise Exception(
-                    "Authentication failed. Check TRADING212_API_KEY and "
-                    "TRADING212_API_SECRET in your environment."
+                    "Cannot connect to Trading 212. Check your internet connection."
                 )
-            if status == 429:
+            except httpx.TimeoutException:
                 raise Exception(
-                    "Rate limited by Trading 212. Wait a few seconds before retrying."
+                    "Trading 212 API request timed out. Try again."
                 )
-            raise Exception(f"Trading 212 API error {status}: {e.response.text}")
-        except httpx.ConnectError:
-            raise Exception(
-                "Cannot connect to Trading 212. Check your internet connection."
-            )
-        except httpx.TimeoutException:
-            raise Exception(
-                "Trading 212 API request timed out. Try again."
-            )
 
     def _paginate(self, url: str, params: dict = None) -> list[dict]:
         """Follow nextPagePath cursors to collect all pages of results."""
@@ -187,7 +235,33 @@ class T212Client:
         if ticker is not None:
             params["ticker"] = ticker
         data = self._request("GET", "/equity/history/orders", params=params)
-        return [HistoricalOrder.model_validate(order) for order in data["items"]]
+        results = []
+        for item in data["items"]:
+            order = item.get("order", {})
+            fill = item.get("fill", {})
+            wallet = fill.get("walletImpact", {})
+            flat = {
+                "id": order.get("id"),
+                "ticker": order.get("ticker"),
+                "type": order.get("type"),
+                "status": order.get("status"),
+                "executor": order.get("initiatedFrom"),
+                "filledValue": order.get("filledValue"),
+                "orderedValue": order.get("value"),
+                "dateCreated": order.get("createdAt"),
+                "limitPrice": order.get("limitPrice"),
+                "stopPrice": order.get("stopPrice"),
+                "timeValidity": order.get("timeValidity"),
+                "parentOrder": order.get("parentOrder"),
+                "filledQuantity": fill.get("quantity"),
+                "fillPrice": fill.get("price"),
+                "fillId": fill.get("id"),
+                "fillType": fill.get("type"),
+                "dateExecuted": fill.get("filledAt"),
+                "taxes": wallet.get("taxes"),
+            }
+            results.append(HistoricalOrder.model_validate(flat))
+        return results
 
     def fetch_transactions(self, cursor: Optional[str] = None,
                            time: Optional[str] = None,

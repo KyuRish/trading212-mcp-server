@@ -40,7 +40,7 @@ def fetch_portfolio_summary() -> dict:
     invested = cash.invested or 0
     ppl = cash.ppl or 0
 
-    return {
+    result = {
         "currency": account.currency_code,
         "total_value": round(total, 2),
         "cash_available": round(cash.free or 0, 2),
@@ -51,6 +51,10 @@ def fetch_portfolio_summary() -> dict:
         "positions": holdings,
         "top_holdings": holdings[:5],
     }
+    waited = client.drain_wait_time()
+    if waited:
+        result["_note"] = f"Response delayed {waited}s due to Trading 212 rate limits."
+    return result
 
 
 @mcp.tool("fetch_portfolio_performance")
@@ -116,7 +120,7 @@ def fetch_portfolio_performance() -> dict:
         for o in orders if o.status and o.status.value == "FILLED"
     ][:20]
 
-    return {
+    result = {
         "currency": account.currency_code,
         "total_price_ppl": round(sum(p["price_ppl"] for p in perf), 2),
         "total_dividends": round(total_dividends, 2),
@@ -126,6 +130,10 @@ def fetch_portfolio_performance() -> dict:
         "positions": perf,
         "recent_filled_orders": filled,
     }
+    waited = client.drain_wait_time()
+    if waited:
+        result["_note"] = f"Response delayed {waited}s due to Trading 212 rate limits."
+    return result
 
 
 @mcp.tool("fetch_dividend_summary")
@@ -182,7 +190,7 @@ def fetch_dividend_summary() -> dict:
     total = sum(d.amount or 0 for d in all_divs)
     months_span = len(by_month) or 1
 
-    return {
+    result = {
         "currency": account.currency_code,
         "total_dividends": round(total, 2),
         "dividend_count": len(all_divs),
@@ -190,6 +198,10 @@ def fetch_dividend_summary() -> dict:
         "by_ticker": ticker_list,
         "by_month": month_list,
     }
+    waited = client.drain_wait_time()
+    if waited:
+        result["_note"] = f"Response delayed {waited}s due to Trading 212 rate limits."
+    return result
 
 
 @mcp.tool("fetch_recent_activity")
@@ -239,9 +251,13 @@ def fetch_recent_activity(limit: int = 20) -> dict:
 
     activity.sort(key=lambda a: a.get("date") or "", reverse=True)
 
-    return {
+    result = {
         "currency": account.currency_code,
         "activity": activity,
         "order_count": len(orders),
         "transaction_count": len(txns.items),
     }
+    waited = client.drain_wait_time()
+    if waited:
+        result["_note"] = f"Response delayed {waited}s due to Trading 212 rate limits."
+    return result
