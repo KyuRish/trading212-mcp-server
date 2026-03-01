@@ -28,6 +28,10 @@ These combine multiple API calls into single high-level responses:
 - **`fetch_dividend_summary`** - Income analysis grouped by ticker and month
 - **`fetch_recent_activity`** - Combined timeline of trades and transactions
 
+### Rate limiting
+
+Built-in rate limiter reads T212's `x-ratelimit-remaining` and `x-ratelimit-reset` headers. It auto-waits when a limit is exhausted and retries on 429 (up to 3 times). Composite tools that chain multiple API calls handle this transparently - no 429 errors leak to the caller.
+
 ## Installation
 
 ### Quick start (recommended)
@@ -60,7 +64,7 @@ Both are required - the server uses Basic Auth (base64 `key:secret`).
 
 ### Claude Desktop
 
-Add to `claude_desktop_config.json` ([Windows](file:///C:/Users) `%APPDATA%\Claude\` / [Mac](file:///Users) `~/Library/Application Support/Claude/`):
+Add to `claude_desktop_config.json` (Windows: `%APPDATA%\Claude\`, Mac: `~/Library/Application Support/Claude/`):
 
 ```json
 {
