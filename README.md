@@ -180,6 +180,16 @@ uv sync
 uv run -m trading212_mcp_server.server
 ```
 
+## Author
+
+Built by [Rishabh Dogra](https://github.com/KyuRish).
+
+## Support
+
+This took quite some time to build in hopes it would make your life easier. If it did, a coffee would mean a lot.
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/kyurish)
+
 ## License
 
 MIT
