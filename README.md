@@ -7,6 +7,10 @@ mcp-name: io.github.KyuRish/trading212-mcp-server
 
 MCP server for the Trading 212 API. Works with any LLM client that supports MCP - Claude, ChatGPT, Gemini, Cursor, Windsurf, and more.
 
+<a href="https://glama.ai/mcp/servers/@KyuRish/trading212-mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@KyuRish/trading212-mcp-server/badge" alt="trading212-mcp-server MCP server" />
+</a>
+
 ## What can it do?
 
 **28 tools** covering the full Trading 212 API, plus 4 analytics tools that combine multiple API calls into actionable insights:
