@@ -3,7 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/trading212-mcp-server)](https://pypi.org/project/trading212-mcp-server/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-mcp-name: io.github.kyurish/trading212-mcp-server
+mcp-name: io.github.KyuRish/trading212-mcp-server
 
 MCP server for the Trading 212 API. Works with any LLM client that supports MCP - Claude, ChatGPT, Gemini, Cursor, Windsurf, and more.
 
