@@ -2,6 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/trading212-mcp-server)](https://pypi.org/project/trading212-mcp-server/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Glama](https://glama.ai/mcp/servers/@KyuRish/trading212-mcp-server/badge)](https://glama.ai/mcp/servers/@KyuRish/trading212-mcp-server)
 
 mcp-name: io.github.KyuRish/trading212-mcp-server
 
