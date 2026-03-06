@@ -3,7 +3,7 @@ name = "trading212-mcp-server"
 version = "0.1.1"
 description = "MCP server for Trading 212 API integration"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.11"
 authors = [{ name = "Rishabh Dogra", email = "contact@kyuish.com" }]
 keywords = ["mcp", "trading212", "trading", "portfolio", "stocks"]

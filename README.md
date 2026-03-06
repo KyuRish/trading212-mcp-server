@@ -3,6 +3,9 @@
 [![PyPI](https://img.shields.io/pypi/v/trading212-mcp-server)](https://pypi.org/project/trading212-mcp-server/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Glama](https://img.shields.io/badge/Glama-Security%20A%20%C2%B7%20Quality%20A-green)](https://glama.ai/mcp/servers/@KyuRish/trading212-mcp-server)
+![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
+![MCP](https://img.shields.io/badge/MCP-compatible-purple)
+![Tools](https://img.shields.io/badge/Tools-32-orange)
 
 <!-- mcp-name: io.github.KyuRish/trading212-mcp-server -->
 
