@@ -1,7 +1,7 @@
 # Trading 212 MCP Server
 
 [![PyPI](https://img.shields.io/pypi/v/trading212-mcp-server)](https://pypi.org/project/trading212-mcp-server/)
-![Downloads](https://img.shields.io/pypi/dm/trading212-mcp-server)
+![Downloads](https://img.shields.io/pypi/dm/trading212-mcp-server?color=8B4513)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Glama](https://img.shields.io/badge/Glama-Security%20A%20%C2%B7%20Quality%20A-green)](https://glama.ai/mcp/servers/@KyuRish/trading212-mcp-server)
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
