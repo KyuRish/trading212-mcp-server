@@ -59,6 +59,10 @@ cd trading212-mcp-server
 uv sync
 ```
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/kyurish-trading212-mcp-server).
+
 ## Authentication
 
 Get your API Key and Secret from the Trading 212 app: **Settings > API (Beta)**.
