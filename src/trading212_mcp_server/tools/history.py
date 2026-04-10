@@ -1,11 +1,15 @@
+from mcp.types import ToolAnnotations
 from trading212_mcp_server.app import mcp, client
 from trading212_mcp_server.models import (
     HistoricalOrder, PaginatedDividends, PaginatedTransactions,
     Report, EnqueuedReport, ReportDataIncluded,
 )
 
+_READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True)
+_WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False)
 
-@mcp.tool("fetch_historical_order_data")
+
+@mcp.tool("fetch_historical_order_data", annotations=_READ)
 def fetch_historical_order_data(
     cursor: int = None, ticker: str = None, limit: int = 20
 ) -> list[HistoricalOrder]:
@@ -13,7 +17,7 @@ def fetch_historical_order_data(
     return client.fetch_order_history(cursor=cursor, ticker=ticker, limit=limit)
 
 
-@mcp.tool("fetch_paid_out_dividends")
+@mcp.tool("fetch_paid_out_dividends", annotations=_READ)
 def fetch_paid_out_dividends(
     cursor: int = None, ticker: str = None, limit: int = 20
 ) -> PaginatedDividends:
@@ -21,13 +25,13 @@ def fetch_paid_out_dividends(
     return client.fetch_dividends(cursor=cursor, ticker=ticker, limit=limit)
 
 
-@mcp.tool("fetch_exports_list")
+@mcp.tool("fetch_exports_list", annotations=_READ)
 def fetch_exports_list() -> list[Report]:
     """Get a list of all previously generated CSV account exports with their status and download links."""
     return client.fetch_reports()
 
 
-@mcp.tool("request_csv_export")
+@mcp.tool("request_csv_export", annotations=_WRITE)
 def request_csv_export(
     include_dividends: bool = True,
     include_interest: bool = True,
@@ -64,7 +68,7 @@ def request_csv_export(
     )
 
 
-@mcp.tool("fetch_transaction_list")
+@mcp.tool("fetch_transaction_list", annotations=_READ)
 def fetch_transaction_list(
     cursor: str | None = None, time: str | None = None, limit: int = 20
 ) -> PaginatedTransactions:

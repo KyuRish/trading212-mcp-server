@@ -1,8 +1,11 @@
+from mcp.types import ToolAnnotations
 from trading212_mcp_server.app import mcp, client
 from trading212_mcp_server.models import Instrument, Exchange
 
+_READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True)
 
-@mcp.tool("search_instrument")
+
+@mcp.tool("search_instrument", annotations=_READ)
 def search_instrument(search_term: str = None) -> list[Instrument]:
     """
     Look up tradeable instruments, with optional filtering by ticker or name.
@@ -28,7 +31,7 @@ def search_instrument(search_term: str = None) -> list[Instrument]:
     ]
 
 
-@mcp.tool("search_exchange")
+@mcp.tool("search_exchange", annotations=_READ)
 def search_exchange(search_term: str = None) -> list[Exchange]:
     """
     Look up exchanges, with optional filtering by name or numeric ID.

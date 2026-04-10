@@ -1,8 +1,11 @@
 from datetime import datetime
+from mcp.types import ToolAnnotations
 from trading212_mcp_server.app import mcp, client
 
+_READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True)
 
-@mcp.tool("fetch_portfolio_summary")
+
+@mcp.tool("fetch_portfolio_summary", annotations=_READ)
 def fetch_portfolio_summary() -> dict:
     """
     Produce a full portfolio snapshot in one call.
@@ -57,7 +60,7 @@ def fetch_portfolio_summary() -> dict:
     return result
 
 
-@mcp.tool("fetch_portfolio_performance")
+@mcp.tool("fetch_portfolio_performance", annotations=_READ)
 def fetch_portfolio_performance() -> dict:
     """
     Build a performance report across all positions.
@@ -136,7 +139,7 @@ def fetch_portfolio_performance() -> dict:
     return result
 
 
-@mcp.tool("fetch_dividend_summary")
+@mcp.tool("fetch_dividend_summary", annotations=_READ)
 def fetch_dividend_summary() -> dict:
     """
     Analyse your dividend income history.
@@ -204,7 +207,7 @@ def fetch_dividend_summary() -> dict:
     return result
 
 
-@mcp.tool("fetch_recent_activity")
+@mcp.tool("fetch_recent_activity", annotations=_READ)
 def fetch_recent_activity(limit: int = 20) -> dict:
     """
     Get a unified timeline of recent trades and account movements.
