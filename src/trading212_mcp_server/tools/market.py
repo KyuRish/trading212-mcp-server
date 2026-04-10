@@ -8,15 +8,23 @@ _READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint
 @mcp.tool("search_instrument", annotations=_READ)
 def search_instrument(search_term: str = None) -> list[Instrument]:
     """
-    Look up tradeable instruments, with optional filtering by ticker or name.
+    Search for tradeable instruments by ticker symbol or company name.
+    Returns matching instruments with their ticker, ISIN, currency, and type.
+
+    Use this before placing orders or creating pies to find the correct Trading 212
+    ticker format (e.g., 'AAPL_US_EQ' for Apple). Omit the search term to retrieve
+    the full instrument catalogue.
+
+    The search is case-insensitive and matches partial strings against both
+    ticker symbols and instrument names.
 
     Args:
-        search_term: Case-insensitive text to match against ticker symbols
-            and instrument names. Omit to return every available instrument.
+        search_term: Text to match against tickers and names (e.g., 'Apple', 'AAPL',
+            'silver ETC'). Omit to return every available instrument.
 
     Returns:
-        List of instruments matching the search, or the full catalogue if
-        no search_term is given
+        List of Instrument objects with ticker, name, type (STOCK/ETF), currencyCode,
+        isin, shortName, and maxOpenQuantity
     """
     instruments = client.fetch_instruments()
 
@@ -34,14 +42,20 @@ def search_instrument(search_term: str = None) -> list[Instrument]:
 @mcp.tool("search_exchange", annotations=_READ)
 def search_exchange(search_term: str = None) -> list[Exchange]:
     """
-    Look up exchanges, with optional filtering by name or numeric ID.
+    Search for stock exchanges by name or numeric ID. Returns exchange details
+    including trading hours and working schedules.
+
+    Use this to check when a specific exchange is open for trading, or to
+    look up exchange information by its numeric ID from an instrument's
+    workingScheduleId field.
 
     Args:
-        search_term: Case-insensitive text to match against exchange names,
-            or an exact numeric exchange ID. Omit to return all exchanges.
+        search_term: Case-insensitive text to match against exchange names
+            (e.g., 'NASDAQ', 'London'), or an exact numeric exchange ID
+            (e.g., '71'). Omit to return all exchanges.
 
     Returns:
-        List of matching exchanges, or every exchange if no filter is applied
+        List of Exchange objects with id, name, and workingSchedules
     """
     exchanges = client.fetch_exchanges()
 

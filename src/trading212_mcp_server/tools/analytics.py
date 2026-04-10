@@ -8,15 +8,17 @@ _READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint
 @mcp.tool("fetch_portfolio_summary", annotations=_READ)
 def fetch_portfolio_summary() -> dict:
     """
-    Produce a full portfolio snapshot in one call.
+    Produce a complete portfolio snapshot in one call by combining account info,
+    cash balance, and all open positions into a single aggregated response.
 
-    Pulls account info, cash balance, and every open position, then
-    calculates totals and ranks holdings by value.
+    This is the recommended starting point for portfolio analysis. It calculates
+    total value, P/L percentages, and ranks holdings by current value. For
+    per-position performance with dividends, use fetch_portfolio_performance instead.
 
     Returns:
-        dict with keys: currency, total_value, cash_available, invested,
-        profit_loss, profit_loss_pct, position_count, positions (by value
-        descending), top_holdings (top 5)
+        dict with currency, total_value, cash_available, invested, profit_loss,
+        profit_loss_pct, position_count, positions (sorted by value descending),
+        and top_holdings (top 5)
     """
     account = client.fetch_account()
     cash = client.fetch_cash()
@@ -63,15 +65,17 @@ def fetch_portfolio_summary() -> dict:
 @mcp.tool("fetch_portfolio_performance", annotations=_READ)
 def fetch_portfolio_performance() -> dict:
     """
-    Build a performance report across all positions.
+    Build a detailed performance report across all positions by combining
+    current holdings, recent order history, and dividend payouts.
 
-    Gathers current holdings, recent order history, and dividend payouts
-    to calculate per-position returns and identify top/bottom performers.
+    Calculates per-position total returns (price P/L + dividends) and identifies
+    best and worst performers. Use this for deeper analysis than fetch_portfolio_summary
+    provides, especially when dividend income matters.
 
     Returns:
-        dict with keys: currency, total_price_ppl, total_dividends,
-        total_return, best_performer, worst_performer, positions
-        (with individual P/L and dividends), recent_filled_orders
+        dict with currency, total_price_ppl, total_dividends, total_return,
+        best_performer, worst_performer, positions (each with invested, current_value,
+        price_ppl, dividends, total_return, return_pct, held_since), recent_filled_orders
     """
     account = client.fetch_account()
     positions = client.fetch_positions()
@@ -142,14 +146,16 @@ def fetch_portfolio_performance() -> dict:
 @mcp.tool("fetch_dividend_summary", annotations=_READ)
 def fetch_dividend_summary() -> dict:
     """
-    Analyse your dividend income history.
+    Analyse dividend income history by collecting up to 200 dividend records
+    and breaking them down by ticker and by calendar month.
 
-    Collects up to 200 dividend records and breaks them down by ticker
-    and by calendar month to reveal income trends.
+    Use this to identify which holdings generate the most income and to spot
+    monthly income trends. For raw dividend records with pagination control,
+    use fetch_paid_out_dividends instead.
 
     Returns:
-        dict with keys: currency, total_dividends, dividend_count,
-        average_monthly, by_ticker (highest first), by_month (chronological)
+        dict with currency, total_dividends, dividend_count, average_monthly,
+        by_ticker (sorted highest-paying first), by_month (chronological)
     """
     account = client.fetch_account()
 
@@ -210,18 +216,21 @@ def fetch_dividend_summary() -> dict:
 @mcp.tool("fetch_recent_activity", annotations=_READ)
 def fetch_recent_activity(limit: int = 20) -> dict:
     """
-    Get a unified timeline of recent trades and account movements.
+    Get a unified timeline of recent trades and account movements by merging
+    order history with deposit/withdrawal transactions into a single
+    chronologically sorted feed.
 
-    Merges order history with deposit/withdrawal transactions into a
-    single chronologically sorted feed.
+    Use this for a quick "what happened recently" overview. Each entry is tagged
+    as either 'order' (trade) or 'transaction' (cash movement). For separate
+    access, use fetch_historical_order_data or fetch_transaction_list.
 
     Args:
-        limit: How many items to pull from each source (capped at 50, default 20)
+        limit: How many items to pull from each source (orders and transactions
+            separately), 1-50. Defaults to 20. Total activity items may be up to 2x this.
 
     Returns:
-        dict with keys: currency, activity (merged and sorted newest-first,
-        each entry tagged as 'order' or 'transaction'), order_count,
-        transaction_count
+        dict with currency, activity (sorted newest-first, each tagged as 'order' or
+        'transaction'), order_count, transaction_count
     """
     account = client.fetch_account()
     orders = client.fetch_order_history(limit=min(limit, 50))

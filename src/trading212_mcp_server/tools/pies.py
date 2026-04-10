@@ -15,13 +15,35 @@ _DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempot
 
 @mcp.tool("fetch_pies", annotations=_READ)
 def fetch_pies() -> list[PieSummary]:
-    """List all your pies with their cash balances, dividend info, goal progress, and investment performance."""
+    """
+    List all investment pies with their cash balances, dividend details,
+    goal progress, and overall investment performance.
+
+    Use this to get an overview of all pies before drilling into a specific one
+    with fetch_a_pie. Each pie includes its numeric ID needed for other pie operations.
+
+    Returns:
+        List of PieSummary objects with id, status, cash, progress, result, dividendDetails
+    """
     return client.fetch_pies()
 
 
 @mcp.tool("fetch_a_pie", annotations=_READ)
 def fetch_a_pie(pie_id: int) -> PieDetails:
-    """Get full details for a single pie including every instrument allocation, current settings, and per-instrument results."""
+    """
+    Get full details for a single pie including every instrument allocation,
+    current vs target weights, per-instrument P/L, and pie settings.
+
+    Use fetch_pies first to get the list of pie IDs, then call this for
+    detailed breakdown of a specific pie.
+
+    Args:
+        pie_id: Numeric ID of the pie (e.g., 6894572). Get this from fetch_pies.
+
+    Returns:
+        PieDetails with settings (name, goal, endDate, dividendCashAction) and
+        instruments (ticker, expectedShare, currentShare, ownedQuantity, result)
+    """
     return client.fetch_pie(pie_id)
 
 
@@ -35,17 +57,22 @@ def create_pie(
     icon: Optional[str] = None,
 ) -> PieDetails:
     """
-    Build a new pie with the given instruments and weights.
+    Create a new investment pie with the given instruments and target weights.
+    This creates a real pie in your account - instruments will be purchased
+    when you fund the pie.
+
+    Use search_instrument to find valid ticker symbols before creating. Weights
+    must sum to 1.0 (100%). See also: duplicate_pie to clone an existing pie.
 
     Args:
-        name: Display name for the pie
-        instrument_shares: Mapping of instrument tickers to their target weights
-            (e.g., {'AAPL_US_EQ': 0.5, 'MSFT_US_EQ': 0.5})
-        dividend_cash_action: What to do with dividends - REINVEST or TO_ACCOUNT_CASH
-        end_date: Optional target end date in ISO 8601 format
-            (e.g., '2025-12-31T23:59:59Z')
-        goal: Target total value for the pie in your account currency
-        icon: Identifier for the pie icon
+        name: Display name for the pie (e.g., 'Tech Growth')
+        instrument_shares: Mapping of ticker to target weight, must sum to 1.0.
+            Example: {'AAPL_US_EQ': 0.5, 'MSFT_US_EQ': 0.3, 'NVDA_US_EQ': 0.2}
+        dividend_cash_action: REINVEST (buy more shares) or TO_ACCOUNT_CASH (withdraw to cash).
+            Defaults to REINVEST if not specified.
+        end_date: Optional target date in ISO 8601 (e.g., '2029-12-31T23:59:59Z')
+        goal: Optional target value in account currency (e.g., 20000.0)
+        icon: Optional pie icon identifier (e.g., 'Coins', 'Education')
 
     Returns:
         PieDetails: Full details of the newly created pie
@@ -69,17 +96,20 @@ def update_pie(
     icon: Optional[str] = None,
 ) -> PieDetails:
     """
-    Modify an existing pie's configuration. You must provide a new name when updating.
+    Modify an existing pie's settings, instrument allocations, or target weights.
+    Only provided fields are updated - omitted fields remain unchanged.
+
+    Use fetch_a_pie first to see the current configuration before making changes.
+    The API requires providing a name even if you are not changing it.
 
     Args:
-        pie_id: Numeric ID of the pie to modify
-        name: Updated name for the pie (required by the API)
-        instrument_shares: New ticker-to-weight mapping
-            (e.g., {'AAPL_US_EQ': 0.5, 'MSFT_US_EQ': 0.5})
-        dividend_cash_action: Updated dividend handling - REINVEST or TO_ACCOUNT_CASH
-        end_date: Revised end date in ISO 8601 format
-            (e.g., '2025-12-31T23:59:59Z')
-        goal: Revised target value in account currency
+        pie_id: Numeric ID of the pie to modify (e.g., 6894572). Get this from fetch_pies.
+        name: Updated name for the pie. Required by the API even if unchanged.
+        instrument_shares: New ticker-to-weight mapping, must sum to 1.0.
+            Example: {'AAPL_US_EQ': 0.5, 'MSFT_US_EQ': 0.5}
+        dividend_cash_action: REINVEST or TO_ACCOUNT_CASH
+        end_date: Revised end date in ISO 8601 (e.g., '2029-12-31T23:59:59Z')
+        goal: Revised target value in account currency (e.g., 25000.0)
         icon: Updated icon identifier
 
     Returns:
@@ -98,12 +128,16 @@ def duplicate_pie(
     pie_id: int, name: Optional[str] = None, icon: Optional[str] = None
 ) -> PieDetails:
     """
-    Clone an existing pie into a new one with identical instrument allocations.
+    Clone an existing pie into a new one with identical instrument allocations
+    and settings. The new pie starts with zero invested value.
+
+    Use this to create a variation of an existing pie without rebuilding it
+    from scratch. See also: create_pie for building a pie from scratch.
 
     Args:
-        pie_id: ID of the source pie to copy
-        name: Optional custom name for the clone
-        icon: Optional icon for the clone
+        pie_id: ID of the source pie to copy (e.g., 6894572). Get this from fetch_pies.
+        name: Optional custom name for the clone. Defaults to the original name with a suffix.
+        icon: Optional icon for the clone.
 
     Returns:
         PieDetails: Full details of the newly cloned pie
@@ -114,5 +148,14 @@ def duplicate_pie(
 
 @mcp.tool("delete_pie", annotations=_DESTRUCTIVE)
 def delete_pie(pie_id: int):
-    """Permanently remove a pie. Instruments inside it become standalone positions in your portfolio."""
+    """
+    Permanently delete a pie. This is irreversible. Instruments inside the pie
+    become standalone positions in your portfolio - they are not sold.
+
+    Use fetch_a_pie first to review the pie contents before deleting. Consider
+    whether you want to sell the positions separately after deletion.
+
+    Args:
+        pie_id: Numeric ID of the pie to delete (e.g., 6894572). Get this from fetch_pies.
+    """
     return client.delete_pie(pie_id)
