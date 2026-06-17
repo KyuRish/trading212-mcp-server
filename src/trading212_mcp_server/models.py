@@ -167,7 +167,7 @@ class Position(T212BaseModel):
     pie_quantity: Optional[float] = None
     max_buy: Optional[float] = None
     max_sell: Optional[float] = None
-    frontend: Optional[Executor] = None
+    frontend: Optional[str] = None
 
 
 # Orders
@@ -199,7 +199,7 @@ class HistoricalOrder(T212BaseModel):
     ticker: str
     type: Optional[OrderType] = None
     status: Optional[OrderStatus] = None
-    executor: Optional[Executor] = None
+    executor: Optional[str] = None
     filled_quantity: Optional[float] = None
     filled_value: Optional[float] = None
     fill_price: Optional[float] = None

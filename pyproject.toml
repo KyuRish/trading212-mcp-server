@@ -1,6 +1,6 @@
 [project]
 name = "trading212-mcp-server"
-version = "0.2.1"
+version = "0.3.0"
 description = "MCP server for Trading 212 - 32 tools for portfolio management, trading, pies, dividends, and analytics. Works with Claude, ChatGPT, Cursor, and any MCP client."
 readme = "README.md"
 license = "MIT"
